@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34316.72
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradeWatcher", "TradeWatcher\TradeWatcher.csproj", "{F64175D2-2016-44EA-A19E-FAD2933B3BE5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F64175D2-2016-44EA-A19E-FAD2933B3BE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F64175D2-2016-44EA-A19E-FAD2933B3BE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F64175D2-2016-44EA-A19E-FAD2933B3BE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F64175D2-2016-44EA-A19E-FAD2933B3BE5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {125929AD-705F-469F-8CF0-8ED2ED64BD19}
+	EndGlobalSection
+EndGlobal

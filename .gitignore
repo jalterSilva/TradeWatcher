@@ -1,0 +1,19 @@
+# Ignora arquivos e pastas geradas pelo build
+bin/
+obj/
+
+# Configurações de usuário
+*.user
+*.suo
+
+# Arquivos temporários do Visual Studio
+.vs/
+*.vsidx
+
+# Configs de VS Code, se usar
+.vscode/
+
+# Arquivos sensíveis ou específicos
+*.log
+*.db
+appsettings.Development.json
