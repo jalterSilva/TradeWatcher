@@ -27,6 +27,22 @@ namespace TradeWatcher
             _logger.LogInformation($" Ativos monitorados: {string.Join(", ", _tickers)}");
         }
 
+        private async Task WaitUntilMorning(CancellationToken stoppingToken)
+        {
+            var now = DateTime.Now;
+            var target = now.Date.AddHours(7).AddMinutes(30);
+            //var target = now.AddSeconds(3);
+
+            if (now > target)
+                target = target.AddDays(1); // Se já passou hoje, programa para amanhã
+
+            var delay = target - now;
+
+            _logger.LogInformation($"[INFO] Aguardando até {target:HH:mm} para iniciar análise...");
+
+            await Task.Delay(delay, stoppingToken);
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
@@ -89,22 +105,6 @@ namespace TradeWatcher
                 _logger.LogInformation($"[INFO] Análise concluída. Aguardando até o próximo dia às 7:30...");
             }
 
-        }
-
-        private async Task WaitUntilMorning(CancellationToken stoppingToken)
-        {
-            var now = DateTime.Now;
-            var target = now.Date.AddHours(7).AddMinutes(30);
-            //var target = now.AddSeconds(3);
-
-            if (now > target)
-                target = target.AddDays(1); // Se já passou hoje, programa para amanhã
-
-            var delay = target - now;
-
-            _logger.LogInformation($"[INFO] Aguardando até {target:HH:mm} para iniciar análise...");
-
-            await Task.Delay(delay, stoppingToken);
         }
 
         private async Task PrintLog(string message)
