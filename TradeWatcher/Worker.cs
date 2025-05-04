@@ -27,83 +27,85 @@ namespace TradeWatcher
             _logger.LogInformation($" Ativos monitorados: {string.Join(", ", _tickers)}");
         }
 
-        private async Task WaitUntilMorning(CancellationToken stoppingToken)
-        {
-            var now = DateTime.Now;
-            var target = now.Date.AddHours(7).AddMinutes(30);
-            //var target = now.AddSeconds(3);
+        //private async Task WaitUntilMorning(CancellationToken stoppingToken)
+        //{
+        //    var now = DateTime.Now;
+        //    var target = now.Date.AddHours(7).AddMinutes(30);
+        //   // var target = now.AddSeconds(3);
 
-            if (now > target)
-                target = target.AddDays(1); // Se já passou hoje, programa para amanhã
+        //    if (now > target)
+        //        target = target.AddDays(1); // Se já passou hoje, programa para amanhã
 
-            var delay = target - now;
+        //    var delay = target - now;
 
-            _logger.LogInformation($"[INFO] Aguardando até {target:HH:mm} para iniciar análise...");
+        //    _logger.LogInformation($"[INFO] Aguardando até {target:HH:mm} para iniciar análise...");
 
-            await Task.Delay(delay, stoppingToken);
-        }
+        //    await Task.Delay(delay, stoppingToken);
+        //}
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
-            while (!stoppingToken.IsCancellationRequested)
+            //while (!stoppingToken.IsCancellationRequested)
+            //{
+            //    await WaitUntilMorning(stoppingToken);
+
+            await PrintLog($" Bom dia pessoal, mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 1 60 PERÍODOS DESVIO PADRÃO DE 2. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 2 60 PERÍODOS DESVIO PADRÃO DE 3. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 3 60 PERÍODOS DESVIO PADRÃO DE 4. ");
+            await PrintLog($" Bons trades a todos");
+
+            foreach (var ticker in _tickers)
             {
-                await WaitUntilMorning(stoppingToken);
-
-                await PrintLog($" Bom dia pessoal, mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
-                await PrintLog($" CONFIGURAÇÃO: BANDA 1 60 PERÍODOS DESVIO PADRÃO DE 2. ");
-                await PrintLog($" CONFIGURAÇÃO: BANDA 2 60 PERÍODOS DESVIO PADRÃO DE 3. ");
-                await PrintLog($" CONFIGURAÇÃO: BANDA 3 60 PERÍODOS DESVIO PADRÃO DE 4. ");
-                await PrintLog($" Bons trades a todos");
-
-                foreach (var ticker in _tickers)
+                try
                 {
-                    try
+                    _logger.LogInformation($"[INFO] Buscando candles para {ticker}...");
+
+                    var candles = await _brapiService.GetDailyCandlesAsync(ticker);
+
+                    if (candles == null || candles.Count == 0)
                     {
-                        _logger.LogInformation($"[INFO] Buscando candles para {ticker}...");
-
-                        var candles = await _brapiService.GetDailyCandlesAsync(ticker);
-
-                        if (candles == null || candles.Count == 0)
-                        {
-                            _logger.LogWarning($"[WARNING] Nenhum candle retornado para {ticker}.");
-                            continue;
-                        }
-
-                        _logger.LogInformation($"[INFO] {candles.Count} candles carregados para {ticker}.");
-
-                        var resultado = _bollingerAnalyzer.Analyze(candles);
-
-                        _logger.LogInformation($"Último fechamento {ticker}: {resultado.LastClose}");
-
-                        if (resultado.TouchedBand2Upper)
-                            await PrintLog($"{ticker} TOCOU BANDA 2 SUPERIOR!");
-                        else if (resultado.NearBand2Upper)
-                            await PrintLog($"{ticker} APROXIMOU DA BANDA 2 SUPERIOR!");
-
-                        if (resultado.TouchedBand2Lower)
-                            await PrintLog($"{ticker} TOCOU BANDA 2 INFERIOR!");
-                        else if (resultado.NearBand2Lower)
-                            await PrintLog($"{ticker} APROXIMOU DA BANDA 2 INFERIOR!");
-
-                        if (resultado.TouchedBand3Upper)
-                            await PrintLog($"{ticker} TOCOU BANDA 3 SUPERIOR!");
-                        else if (resultado.NearBand3Upper)
-                            await PrintLog($"{ticker} APROXIMOU DA BANDA 3 SUPERIOR!");
-
-                        if (resultado.TouchedBand3Lower)
-                            await PrintLog($"{ticker} TOCOU BANDA 3 INFERIOR!");
-                        else if (resultado.NearBand3Lower)
-                            await PrintLog($"{ticker} APROXIMOU DA BANDA 3 INFERIOR!");
+                        _logger.LogWarning($"[WARNING] Nenhum candle retornado para {ticker}.");
+                        continue;
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"[ERRO] Erro ao processar o ativo {ticker}.");
-                    }
+
+                    _logger.LogInformation($"[INFO] {candles.Count} candles carregados para {ticker}.");
+
+                    var resultado = _bollingerAnalyzer.Analyze(candles);
+
+                    _logger.LogInformation($"Último fechamento {ticker}: {resultado.LastClose}");
+
+                    if (resultado.TouchedBand2Upper)
+                        await PrintLog($"{ticker} TOCOU BANDA 2 SUPERIOR!");
+                    else if (resultado.NearBand2Upper)
+                        await PrintLog($"{ticker} APROXIMOU DA BANDA 2 SUPERIOR!");
+
+                    if (resultado.TouchedBand2Lower)
+                        await PrintLog($"{ticker} TOCOU BANDA 2 INFERIOR!");
+                    else if (resultado.NearBand2Lower)
+                        await PrintLog($"{ticker} APROXIMOU DA BANDA 2 INFERIOR!");
+
+                    if (resultado.TouchedBand3Upper)
+                        await PrintLog($"{ticker} TOCOU BANDA 3 SUPERIOR!");
+                    else if (resultado.NearBand3Upper)
+                        await PrintLog($"{ticker} APROXIMOU DA BANDA 3 SUPERIOR!");
+
+                    if (resultado.TouchedBand3Lower)
+                        await PrintLog($"{ticker} TOCOU BANDA 3 INFERIOR!");
+                    else if (resultado.NearBand3Lower)
+                        await PrintLog($"{ticker} APROXIMOU DA BANDA 3 INFERIOR!");
                 }
-
-                _logger.LogInformation($"[INFO] Análise concluída. Aguardando até o próximo dia às 7:30...");
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"[ERRO] Erro ao processar o ativo {ticker}.");
+                }
             }
+
+            await PrintLog("Análise concluída. TradeWatcher finalizado.");
+            _logger.LogInformation($"[INFO] Análise concluída. TradeWatcher finalizado.");
+
+            //}
 
         }
 
