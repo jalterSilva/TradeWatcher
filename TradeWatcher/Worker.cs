@@ -27,28 +27,8 @@ namespace TradeWatcher
             _logger.LogInformation($" Ativos monitorados: {string.Join(", ", _tickers)}");
         }
 
-        //private async Task WaitUntilMorning(CancellationToken stoppingToken)
-        //{
-        //    var now = DateTime.Now;
-        //    var target = now.Date.AddHours(7).AddMinutes(30);
-        //   // var target = now.AddSeconds(3);
-
-        //    if (now > target)
-        //        target = target.AddDays(1); // Se já passou hoje, programa para amanhã
-
-        //    var delay = target - now;
-
-        //    _logger.LogInformation($"[INFO] Aguardando até {target:HH:mm} para iniciar análise...");
-
-        //    await Task.Delay(delay, stoppingToken);
-        //}
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-
-            //while (!stoppingToken.IsCancellationRequested)
-            //{
-            //    await WaitUntilMorning(stoppingToken);
 
             await PrintLog($" Bom dia pessoal, mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
             await PrintLog($" CONFIGURAÇÃO: BANDA 1 60 PERÍODOS DESVIO PADRÃO DE 2. ");
@@ -72,9 +52,7 @@ namespace TradeWatcher
 
                     _logger.LogInformation($"[INFO] {candles.Count} candles carregados para {ticker}.");
 
-                    var resultado = _bollingerAnalyzer.Analyze(candles);
-
-                    _logger.LogInformation($"Último fechamento {ticker}: {resultado.LastClose}");
+                    var resultado = _bollingerAnalyzer.Analyze(candles, ticker);
 
                     if (resultado.TouchedBand2Upper)
                         await PrintLog($"{ticker} TOCOU BANDA 2 SUPERIOR!");
@@ -105,8 +83,6 @@ namespace TradeWatcher
             await PrintLog("Análise concluída. TradeWatcher finalizado.");
             _logger.LogInformation($"[INFO] Análise concluída. TradeWatcher finalizado.");
 
-            //}
-
         }
 
         private async Task PrintLog(string message)
@@ -116,14 +92,9 @@ namespace TradeWatcher
                 Console.ForegroundColor = ConsoleColor.Blue; // ou Red, Cyan etc
                 Console.WriteLine(message);
                 Console.ResetColor();
-
-                await _telegramService.SendMessageAsync(message); // Enviar pro Telegram também
-
             }
-            else
-            {
-                _logger.LogInformation(message);
-            }
+
+            await _telegramService.SendMessageAsync(message); // Enviar pro Telegram também
         }
     }
 }
