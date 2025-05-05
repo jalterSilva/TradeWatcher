@@ -4,12 +4,12 @@ namespace TradeWatcher.Logic
 {
     public class BollingerAnalyzer
     {
-        private const int Period = 60; 
+        private const int Period = 60;
 
-        public BollingerResult Analyze(List<Candle> candles)
+        public BollingerResult Analyze(List<Candle> candles, string ticker)
         {
-            if (candles == null || candles.Count < Period)
-                throw new InvalidOperationException($"É necessário pelo menos {Period} candles para calcular a EMA {Period}.");
+            if (candles == null)
+                throw new InvalidOperationException($"Não existe candles para o ativo {ticker}");
 
             var orderedCandles = candles.OrderBy(c => c.Date).ToList();
             var lastCandle = orderedCandles.Last();
@@ -21,11 +21,8 @@ namespace TradeWatcher.Logic
              .TakeLast(Period)
              .ToList();
 
-            if (closes.Count < Period)
-                throw new InvalidOperationException($"Não há {Period} candles válidos para o cálculo.");
-
             // Logar o último candle que estamos usando
-            Console.WriteLine($"[DEBUG] Último Close usado: {lastCandle.Close}, Data: {lastCandle.Date}");
+            Console.WriteLine($"[DEBUG] Último fechamento: {lastCandle.Close}, Data: {lastCandle.Date}");
 
 
             // Calcula Média Aritmética
