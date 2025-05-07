@@ -30,6 +30,12 @@
     public class Indicators
     {
         public List<Quote>? Quote { get; set; }
+        public List<AdjCloseWrapper>? Adjclose { get; set; }
+    }
+
+    public class AdjCloseWrapper
+    {
+        public List<decimal>? Adjclose { get; set; }
     }
 
     public class Quote

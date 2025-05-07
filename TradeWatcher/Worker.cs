@@ -31,9 +31,9 @@ namespace TradeWatcher
         {
 
             await PrintLog($" Bom dia pessoal, mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
-            await PrintLog($" CONFIGURAÇÃO: BANDA 1 60 PERÍODOS DESVIO PADRÃO DE 2. ");
-            await PrintLog($" CONFIGURAÇÃO: BANDA 2 60 PERÍODOS DESVIO PADRÃO DE 3. ");
-            await PrintLog($" CONFIGURAÇÃO: BANDA 3 60 PERÍODOS DESVIO PADRÃO DE 4. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 1 200 PERÍODOS DESVIO PADRÃO DE 2. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 2 200 PERÍODOS DESVIO PADRÃO DE 3. ");
+            await PrintLog($" CONFIGURAÇÃO: BANDA 3 200 PERÍODOS DESVIO PADRÃO DE 4. ");
             await PrintLog($" Bons trades a todos");
 
             foreach (var ticker in _tickers)
@@ -42,7 +42,11 @@ namespace TradeWatcher
                 {
                     _logger.LogInformation($"[INFO] Buscando candles para {ticker}...");
 
-                    var candles = await _brapiService.GetDailyCandlesAsync(ticker);
+                    // Brapi api
+                    //var candles = await _brapiService.GetDailyCandlesAsync(ticker);
+
+                    // yahoo finance api
+                    var candles = await _marketDataService.GetMarketDailyCandlesAsync(ticker);
 
                     if (candles == null || candles.Count == 0)
                     {

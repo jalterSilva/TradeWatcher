@@ -31,21 +31,30 @@ namespace TradeWatcher.Service
             if (data?.Chart?.Result == null || !data.Chart.Result.Any())
                 return new List<Candle>();
 
-            var result = data.Chart.Result.First();
-            var timestamps = result.Timestamp;
-            var quotes = result?.Indicators?.Quote?.First();
+            var result = data.Chart.Result.FirstOrDefault();
+            var timestamps = result?.Timestamp;
+            var quotes = result?.Indicators?.Quote?.FirstOrDefault();
+
+            var adjCloses = result?.Indicators?.Adjclose?.FirstOrDefault()?.Adjclose;
+
+            if (timestamps == null || quotes == null || adjCloses == null)
+                return new List<Candle>();
 
             var candles = new List<Candle>();
 
             for (int i = 0; i < timestamps?.Count; i++)
             {
+
+                if (quotes?.Open?[i] == null || quotes?.High?[i] == null || quotes?.Low?[i] == null || adjCloses?[i] == null)
+                    continue;
+
                 candles.Add(new Candle
                 {
                     Date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i]),
                     Open = (decimal?)quotes?.Open?[i],
                     High = (decimal?)quotes?.High?[i],
                     Low = (decimal?)quotes?.Low?[i],
-                    Close = (decimal?)quotes?.Close?[i]
+                    Close = (decimal?)adjCloses?[i] 
                 });
             }
 
