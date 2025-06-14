@@ -30,7 +30,7 @@ namespace TradeWatcher
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
-            await PrintLog($" Bom dia pessoal, mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
+            await PrintLog($" Mais um dia de alertas com o Trade Watcher, lembrando que estamos trabalhando com 3 BANDAS DE BOLLINGER, sendo as 2 mais profundas importantes. ");
             await PrintLog($" CONFIGURAÇÃO: BANDA 1 200 PERÍODOS DESVIO PADRÃO DE 2. ");
             await PrintLog($" CONFIGURAÇÃO: BANDA 2 200 PERÍODOS DESVIO PADRÃO DE 3. ");
             await PrintLog($" CONFIGURAÇÃO: BANDA 3 200 PERÍODOS DESVIO PADRÃO DE 4. ");
