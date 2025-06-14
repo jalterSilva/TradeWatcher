@@ -4,7 +4,7 @@ namespace TradeWatcher.Logic
 {
     public class BollingerAnalyzer
     {
-        private const int Period = 60;
+        private const int Period = 200;
 
         public BollingerResult Analyze(List<Candle> candles, string ticker)
         {
@@ -14,7 +14,7 @@ namespace TradeWatcher.Logic
             var orderedCandles = candles.OrderBy(c => c.Date).ToList();
             var lastCandle = orderedCandles.Last();
 
-            // Últimos 60 fechamentos
+            // Últimos 200 fechamentos
             var closes = orderedCandles
              .Where(c => c.Close > 0) // candle válido
              .Select(c => c.Close)
@@ -28,26 +28,22 @@ namespace TradeWatcher.Logic
             // Calcula Média Aritmética
             var mean = closes.Average();
 
-            // Calcula Variância
-            var variance = closes.Sum(c => (c - mean) * (c - mean)) / (closes.Count);
+            var closesAsDouble = closes.Select(c => (double?)c).ToList();
+            var meanDouble = (double)(mean ?? 0);
+            var variance = closesAsDouble.Sum(c => Math.Pow((double)(c - meanDouble ?? 0), 2)) / (closesAsDouble.Count - 1);
 
-            // Calcula Desvio Padrão
             var stdDev = (decimal)Math.Sqrt((double)variance!);
 
 
-            // Calcula as bandas
-            var upperBand1 = mean + (2 * stdDev);
-            var lowerBand1 = mean - (2 * stdDev);
-
+            // Calcula as bandas        
             var upperBand2 = mean + (3 * stdDev);
             var lowerBand2 = mean - (3 * stdDev);
-
             var upperBand3 = mean + (4 * stdDev);
             var lowerBand3 = mean - (4 * stdDev);
 
-
             // Detecta toques
             const decimal proximityThreshold = 0.10m; // 10 centavos de margem
+            var close = lastCandle.Close;
 
             bool touchedBand2Upper = lastCandle.Close >= upperBand2;
             bool touchedBand2Lower = lastCandle.Close <= lowerBand2;
@@ -62,19 +58,19 @@ namespace TradeWatcher.Logic
             return new BollingerResult
             {
                 Date = lastCandle.Date.DateTime,
-                LastClose = lastCandle.Close,
-                UpperBand2 = Math.Round(upperBand2 ?? 0m, 2),
-                LowerBand2 = Math.Round(lowerBand2 ?? 0m, 2),
-                UpperBand3 = Math.Round(upperBand3 ?? 0m, 2),
-                LowerBand3 = Math.Round(lowerBand3 ?? 0m, 2),
-                TouchedBand2Upper = touchedBand2Upper,
-                TouchedBand2Lower = touchedBand2Lower,
-                TouchedBand3Upper = touchedBand3Upper,
-                TouchedBand3Lower = touchedBand3Lower,
-                NearBand2Upper = nearBand2Upper,
-                NearBand2Lower = nearBand2Lower,
-                NearBand3Upper = nearBand3Upper,
-                NearBand3Lower = nearBand3Lower
+                LastClose = close,
+                UpperBand2 = Math.Round(upperBand2 ?? 0, 2),
+                LowerBand2 = Math.Round(lowerBand2 ?? 0, 2),
+                UpperBand3 = Math.Round(upperBand3 ?? 0, 2),
+                LowerBand3 = Math.Round(lowerBand3 ?? 0, 2),
+                TouchedBand2Upper = close >= upperBand2,
+                TouchedBand2Lower = close <= lowerBand2,
+                TouchedBand3Upper = close >= upperBand3,
+                TouchedBand3Lower = close <= lowerBand3,
+                NearBand2Upper = close < upperBand2 && close >= (upperBand2 - proximityThreshold),
+                NearBand2Lower = close > lowerBand2 && close <= (lowerBand2 + proximityThreshold),
+                NearBand3Upper = close < upperBand3 && close >= (upperBand3 - proximityThreshold),
+                NearBand3Lower = close > lowerBand3 && close <= (lowerBand3 + proximityThreshold)
             };
         }
 
