@@ -97,7 +97,7 @@ namespace InsiderTrade.Logic
         }
 
         // ✅ Formato aceito pela OpLab (sem timezone):
-        public static string ToOpLabString(DateTime dtBrt) =>
+        public static string ToOpLabString(DateTimeOffset dtBrt) =>
             dtBrt.ToString("yyyy-MM-dd'T'HH:mm");
     }
 }

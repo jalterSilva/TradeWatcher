@@ -1,9 +1,9 @@
-﻿using System.Linq;
-using InsiderTrade.Client;
+﻿using InsiderTrade.Client;
 using InsiderTrade.Helper;
 using InsiderTrade.Logic;
 using InsiderTrade.Options;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 namespace InsiderTrade
 {
@@ -42,10 +42,85 @@ namespace InsiderTrade
             _logger.LogInformation("Prefixes: {Prefixes}", string.Join(", ", prefixes));
             // ------------------------------------------------
 
-            // ---- Passo 2: Replay do dia OU Live ----
-            const bool REPLAY_TODAY = true;  // ← Troque para false para rodar em modo LIVE
+            // ---- Passo 2: Replay do dia 
+            bool REPLAY_TODAY = false;  // ← Troque para false para rodar em modo LIVE
+            bool RUN_CUSTOM = true;  // ← troque pra true quando quiser rodar janela livre
+
+
             var minutes = _optMon.CurrentValue.CandleMinutes;  // ex.: 15
             var testSymbol = "ITUBI398";                          // símbolo de teste (fixo por enquanto)
+
+
+            // ===== MODO CUSTOM: rode qualquer horário =====
+            // Edite as datas no formato "yyyy-MM-dd HH:mm" (BRT)
+            string CUSTOM_FROM_BRT = "2025-08-13 10:00";
+            string CUSTOM_TO_BRT = "2025-08-13 12:00";
+
+            // helpers locais (simples) só para esse método
+            static DateTimeOffset ParseBrt(string s)
+            {
+                var dt = DateTime.ParseExact(s, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                var uns = DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
+                // BRT fixo (-03:00). Serve pro BR atual sem DST.
+                return new DateTimeOffset(uns, TimeSpan.FromHours(-3));
+            }
+
+            static IEnumerable<(DateTimeOffset from, DateTimeOffset to)>
+                ChunkByMinutes(DateTimeOffset from, DateTimeOffset to, int chunkMinutes)
+            {
+                for (var wFrom = from; wFrom < to; wFrom = wFrom.AddMinutes(chunkMinutes))
+                {
+                    var wTo = wFrom.AddMinutes(chunkMinutes);
+                    if (wTo > to) wTo = to;
+                    yield return (wFrom, wTo);
+                }
+            }
+
+            if (RUN_CUSTOM)
+            {
+                var fromBrt = ParseBrt(CUSTOM_FROM_BRT);
+                var toBrt = ParseBrt(CUSTOM_TO_BRT);
+
+                if (fromBrt >= toBrt)
+                {
+                    _logger.LogWarning("CUSTOM ignorado: FROM >= TO ({From} >= {To})",
+                        TimeHelper.ToOpLabString(fromBrt), TimeHelper.ToOpLabString(toBrt));
+                    return;
+                }
+
+                foreach (var (wFrom, wTo) in ChunkByMinutes(fromBrt, toBrt, minutes))
+                {
+                    if (stoppingToken.IsCancellationRequested) break;
+
+                    try
+                    {
+                        _logger.LogInformation("CUSTOM {Min}m {From}..{To}",
+                            minutes, TimeHelper.ToOpLabString(wFrom), TimeHelper.ToOpLabString(wTo));
+
+                        var json = await _oplab.GetHistoricalOptionRawAsync(
+                            testSymbol, minutes, wFrom.DateTime, wTo.DateTime, stoppingToken);
+
+                        _logger.LogInformation("Replay {Symbol}/{Min}m [{From}..{To}]: {Json}",
+                            testSymbol, minutes,
+                            TimeHelper.ToOpLabString(wFrom),
+                            TimeHelper.ToOpLabString(wTo),
+                            json);
+
+                        await Task.Delay(60, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Erro CUSTOM {From}->{To}: {Msg}",
+                            TimeHelper.ToOpLabString(fromBrt),
+                            TimeHelper.ToOpLabString(toBrt),
+                            ex.Message);
+                    }
+                }
+
+                return; 
+            }
+            // ===== FIM MODO CUSTOM =====
+
 
             if (REPLAY_TODAY)
             {
@@ -83,7 +158,7 @@ namespace InsiderTrade
                 // encerra após o replay
                 return;
             }
-            
+
         }
     }
 }
