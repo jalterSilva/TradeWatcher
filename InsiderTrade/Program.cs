@@ -22,7 +22,8 @@ builder.Services.AddHttpClient<OpLabClient>((sp, http) =>
 {
     var opt = sp.GetRequiredService<IOptions<OpLabOptions>>().Value;
 
-    http.BaseAddress = new Uri(opt.BaseUrl);
+
+    http.BaseAddress = new Uri(opt.BaseUrl.TrimEnd('/') + "/");
     http.Timeout = TimeSpan.FromSeconds(30);
 
     if (!string.IsNullOrWhiteSpace(opt.AccessToken))
