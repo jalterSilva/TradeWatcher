@@ -83,36 +83,7 @@ namespace InsiderTrade
                 // encerra após o replay
                 return;
             }
-            else
-            {
-                // LIVE: loop contínuo pegando sempre a última janela FECHADA dentro do pregão (10:00→17:00)
-                while (!stoppingToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        var (fromBrt, toBrt) = TimeHelper.LastClosedWindowInSessionBrt(minutes);
-
-                        _logger.LogInformation("Janela BRT: {From}..{To}",
-                            TimeHelper.ToOpLabString(fromBrt),
-                            TimeHelper.ToOpLabString(toBrt));
-
-                        var json = await _oplab.GetHistoricalOptionRawAsync(
-                            testSymbol, minutes, fromBrt, toBrt, stoppingToken);
-
-                        _logger.LogInformation("Raw candle {Symbol}/{Min}m [{From}..{To}]: {Json}",
-                            testSymbol, minutes,
-                            TimeHelper.ToOpLabString(fromBrt),
-                            TimeHelper.ToOpLabString(toBrt),
-                            json);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error fetching option candle: {Msg}", ex.Message);
-                    }
-
-                    await Task.Delay(TimeSpan.FromMinutes(_optMon.CurrentValue.IntervalMinutes), stoppingToken);
-                }
-            }
+            
         }
     }
 }
