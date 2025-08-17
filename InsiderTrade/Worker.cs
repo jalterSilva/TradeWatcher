@@ -1,164 +1,82 @@
 ﻿using InsiderTrade.Client;
-using InsiderTrade.Helper;
-using InsiderTrade.Logic;
+using InsiderTrade.Models;
 using InsiderTrade.Options;
 using Microsoft.Extensions.Options;
-using System.Globalization;
 
-namespace InsiderTrade
+namespace InsiderTrade;
+
+public class Worker : BackgroundService
 {
-    public class Worker : BackgroundService
+    private readonly ILogger<Worker> _logger;
+    private readonly OpLabClient _oplab;
+    private readonly IOptionsMonitor<InsiderTradeOptions> _optMon;
+
+    public Worker(ILogger<Worker> logger, OpLabClient oplab, IOptionsMonitor<InsiderTradeOptions> optMon)
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly OpLabClient _oplab;
-        private readonly IOptionsMonitor<InsiderTradeOptions> _optMon;
+        _logger = logger;
+        _oplab = oplab;
+        _optMon = optMon;
+    }
 
-        public Worker(ILogger<Worker> logger, OpLabClient oplab, IOptionsMonitor<InsiderTradeOptions> optMon)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("InsiderTrade.Worker started");
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger = logger;
-            _oplab = oplab;
-            _optMon = optMon;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("InsiderTrade.Worker started");
-
-            // ---- Passo 1: imprimir prefixos para ITUB ----
-            var opt = _optMon.CurrentValue;
-            var underlying = opt.Underlyings.First();             // "ITUB4"
-            var root = SeriesHelper.OptionRoot(underlying);       // "ITUB"
-
-            var calls = SeriesHelper.TakeSeries([.. opt.Series.Calls], opt.Series.CurrentCall, 3).ToList(); // H,I,J
-            var puts = SeriesHelper.TakeSeries([.. opt.Series.Puts], opt.Series.CurrentPut, 3).ToList(); // T,U,V
-
-            var prefixes = calls.Select(s => $"{root}{s}")
-                                .Concat(puts.Select(s => $"{root}{s}"))
-                                .ToList();
-
-            _logger.LogInformation("Underlying: {Underlying}  Root: {Root}", underlying, root);
-            _logger.LogInformation("CALL series: {Calls}", string.Join(",", calls));
-            _logger.LogInformation("PUT  series: {Puts}", string.Join(",", puts));
-            _logger.LogInformation("Prefixes: {Prefixes}", string.Join(", ", prefixes));
-            // ------------------------------------------------
-
-            // ---- Passo 2: Replay do dia 
-            bool REPLAY_TODAY = false;  // ← Troque para false para rodar em modo LIVE
-            bool RUN_CUSTOM = true;  // ← troque pra true quando quiser rodar janela livre
-
-
-            var minutes = _optMon.CurrentValue.CandleMinutes;  // ex.: 15
-            var testSymbol = "ITUBI398";                          // símbolo de teste (fixo por enquanto)
-
-
-            // ===== MODO CUSTOM: rode qualquer horário =====
-            // Edite as datas no formato "yyyy-MM-dd HH:mm" (BRT)
-            string CUSTOM_FROM_BRT = "2025-08-13 10:00";
-            string CUSTOM_TO_BRT = "2025-08-13 12:00";
-
-            // helpers locais (simples) só para esse método
-            static DateTimeOffset ParseBrt(string s)
+            try
             {
-                var dt = DateTime.ParseExact(s, "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
-                var uns = DateTime.SpecifyKind(dt, DateTimeKind.Unspecified);
-                // BRT fixo (-03:00). Serve pro BR atual sem DST.
-                return new DateTimeOffset(uns, TimeSpan.FromHours(-3));
-            }
+                var opt = _optMon.CurrentValue;
+                var underlying = opt.Underlyings.First(); // exemplo: BBDC4
 
-            static IEnumerable<(DateTimeOffset from, DateTimeOffset to)>
-                ChunkByMinutes(DateTimeOffset from, DateTimeOffset to, int chunkMinutes)
-            {
-                for (var wFrom = from; wFrom < to; wFrom = wFrom.AddMinutes(chunkMinutes))
+                _logger.LogInformation("Buscando opções para {Underlying}", underlying);
+
+                var options = await _oplab.GetAllOptionsAsync(underlying, stoppingToken);
+
+                // pega limite mínimo de volume da config
+                var minVol = opt.Severity?.Star1Min ?? 500_000;
+
+                var filtered = options
+                    .Where(o => o.Volume >= 500_000)     // só pega acima de 499k
+                    .OrderByDescending(o => o.Volume)    // ordena do maior pro menor
+                    .ToList();
+
+                _logger.LogInformation("Total encontradas (Vol > {MinVol:N0}): {Count}", minVol, filtered.Count);
+
+
+                // Vinheta de separação entre ativos
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine(new string('-', 90));
+                Console.WriteLine($"### PROCESSANDO ATIVO: {underlying}  ");
+                Console.WriteLine(new string('-', 90));
+                Console.ResetColor();
+
+                foreach (var o in filtered)
                 {
-                    var wTo = wFrom.AddMinutes(chunkMinutes);
-                    if (wTo > to) wTo = to;
-                    yield return (wFrom, wTo);
+                    var t = DateTimeOffset.FromUnixTimeMilliseconds(o.TimeMs ?? 0).ToOffset(TimeSpan.FromHours(-3));
+
+                    // Define cor de acordo com volume
+                    if (o.Volume >= 2_000_000)
+                        Console.ForegroundColor = ConsoleColor.Red;       // acima de 2M
+                    else if (o.Volume >= 1_000_001)
+                        Console.ForegroundColor = ConsoleColor.Yellow;    // 1M a 2M
+                    else if (o.Volume >= 500_000)
+                        Console.ForegroundColor = ConsoleColor.Blue;      // 500K a 1M
+
+                    Console.WriteLine(
+                        $"{t:yyyy-MM-dd} | Ativo= {underlying} | Spot= {o.SpotPrice} | Opção= {o.Symbol,-10} | {o.Category,-4} | Strike= {o.Strike} | Vol= {o.Volume:N0}"
+                    );
+
+                    Console.ResetColor();
                 }
             }
-
-            if (RUN_CUSTOM)
+            catch (Exception ex)
             {
-                var fromBrt = ParseBrt(CUSTOM_FROM_BRT);
-                var toBrt = ParseBrt(CUSTOM_TO_BRT);
-
-                if (fromBrt >= toBrt)
-                {
-                    _logger.LogWarning("CUSTOM ignorado: FROM >= TO ({From} >= {To})",
-                        TimeHelper.ToOpLabString(fromBrt), TimeHelper.ToOpLabString(toBrt));
-                    return;
-                }
-
-                foreach (var (wFrom, wTo) in ChunkByMinutes(fromBrt, toBrt, minutes))
-                {
-                    if (stoppingToken.IsCancellationRequested) break;
-
-                    try
-                    {
-                        _logger.LogInformation("CUSTOM {Min}m {From}..{To}",
-                            minutes, TimeHelper.ToOpLabString(wFrom), TimeHelper.ToOpLabString(wTo));
-
-                        var json = await _oplab.GetHistoricalOptionRawAsync(
-                            testSymbol, minutes, wFrom.DateTime, wTo.DateTime, stoppingToken);
-
-                        _logger.LogInformation("Replay {Symbol}/{Min}m [{From}..{To}]: {Json}",
-                            testSymbol, minutes,
-                            TimeHelper.ToOpLabString(wFrom),
-                            TimeHelper.ToOpLabString(wTo),
-                            json);
-
-                        await Task.Delay(60, stoppingToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Erro CUSTOM {From}->{To}: {Msg}",
-                            TimeHelper.ToOpLabString(fromBrt),
-                            TimeHelper.ToOpLabString(toBrt),
-                            ex.Message);
-                    }
-                }
-
-                return; 
-            }
-            // ===== FIM MODO CUSTOM =====
-
-
-            if (REPLAY_TODAY)
-            {
-                // REPLAY: percorre TODAS as janelas do pregão de hoje (10:00→17:00), alinhadas ao step
-                foreach (var (fromBrt, toBrt) in TimeHelper.SessionWindowsBrt(minutes))
-                {
-                    if (stoppingToken.IsCancellationRequested) break;
-
-                    try
-                    {
-                        _logger.LogInformation("Replay janela BRT: {From}..{To}",
-                            TimeHelper.ToOpLabString(fromBrt), TimeHelper.ToOpLabString(toBrt));
-
-                        var json = await _oplab.GetHistoricalOptionRawAsync(
-                            testSymbol, minutes, fromBrt, toBrt, stoppingToken);
-
-                        _logger.LogInformation("Replay {Symbol}/{Min}m [{From}..{To}]: {Json}",
-                            testSymbol, minutes,
-                            TimeHelper.ToOpLabString(fromBrt),
-                            TimeHelper.ToOpLabString(toBrt),
-                            json);
-
-                        // Pequeno respiro para não estourar limite
-                        await Task.Delay(60, stoppingToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Erro no replay {From}->{To}: {Msg}",
-                            TimeHelper.ToOpLabString(fromBrt),
-                            TimeHelper.ToOpLabString(toBrt),
-                            ex.Message);
-                    }
-                }
-
-                // encerra após o replay
-                return;
+                _logger.LogError(ex, "Erro no Worker: {Msg}", ex.Message);
             }
 
+            // aguarda intervalo configurado
+            await Task.Delay(TimeSpan.FromMinutes(_optMon.CurrentValue.IntervalMinutes), stoppingToken);
         }
     }
 }
