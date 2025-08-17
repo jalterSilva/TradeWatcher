@@ -1,5 +1,4 @@
 ﻿using InsiderTrade.Client;
-using InsiderTrade.Models;
 using InsiderTrade.Options;
 using Microsoft.Extensions.Options;
 
@@ -20,54 +19,63 @@ public class Worker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("InsiderTrade.Worker started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 var opt = _optMon.CurrentValue;
-                var underlying = opt.Underlyings.First(); // exemplo: BBDC4
-
-                _logger.LogInformation("Buscando opções para {Underlying}", underlying);
-
-                var options = await _oplab.GetAllOptionsAsync(underlying, stoppingToken);
-
-                // pega limite mínimo de volume da config
                 var minVol = opt.Severity?.Star1Min ?? 500_000;
 
-                var filtered = options
-                    .Where(o => o.Volume >= 500_000)     // só pega acima de 499k
-                    .OrderByDescending(o => o.Volume)    // ordena do maior pro menor
-                    .ToList();
-
-                _logger.LogInformation("Total encontradas (Vol > {MinVol:N0}): {Count}", minVol, filtered.Count);
-
-
-                // Vinheta de separação entre ativos
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine(new string('-', 90));
-                Console.WriteLine($"### PROCESSANDO ATIVO: {underlying}  ");
-                Console.WriteLine(new string('-', 90));
-                Console.ResetColor();
-
-                foreach (var o in filtered)
+                foreach (var underlying in opt.Underlyings)
                 {
-                    var t = DateTimeOffset.FromUnixTimeMilliseconds(o.TimeMs ?? 0).ToOffset(TimeSpan.FromHours(-3));
 
-                    // Define cor de acordo com volume
-                    if (o.Volume >= 2_000_000)
-                        Console.ForegroundColor = ConsoleColor.Red;       // acima de 2M
-                    else if (o.Volume >= 1_000_001)
-                        Console.ForegroundColor = ConsoleColor.Yellow;    // 1M a 2M
-                    else if (o.Volume >= 500_000)
-                        Console.ForegroundColor = ConsoleColor.Blue;      // 500K a 1M
+                    var options = await _oplab.GetAllOptionsAsync(underlying, stoppingToken);
 
-                    Console.WriteLine(
-                        $"{t:yyyy-MM-dd} | Ativo= {underlying} | Spot= {o.SpotPrice} | Opção= {o.Symbol,-10} | {o.Category,-4} | Strike= {o.Strike} | Vol= {o.Volume:N0}"
-                    );
+                    var filtered = options
+                        .Where(o => o.Volume >= minVol)
+                        .OrderByDescending(o => o.Volume)
+                        .ToList();
 
+                    // Vinheta de separação entre ativos
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine(new string('-', 90));
+                    Console.WriteLine($"### PROCESSANDO ATIVO: {underlying}  ");
+                    Console.WriteLine($"### Total encontradas (Vol > {minVol:N0}): {filtered.Count}");
+                    Console.WriteLine(new string('-', 90));
                     Console.ResetColor();
+
+                    foreach (var o in filtered)
+                    {
+                        // Converte timestamp vindo da API para BRT (UTC-3)
+                        DateTime t;
+                        if (o.TimeMs is not null and > 0)
+                        {
+                            t = DateTimeOffset
+                                    .FromUnixTimeMilliseconds(o.TimeMs.Value) // sempre UTC
+                                    .UtcDateTime                                // garante UTC puro
+                                    .AddHours(-3);                              // converte para BRT
+                        }
+                        else
+                        {
+                            t = DateTime.Now; // fallback
+                        }
+
+                        // Define cor de acordo com volume
+                        if (o.Volume >= 2_000_000)
+                            Console.ForegroundColor = ConsoleColor.Red;
+                        else if (o.Volume >= 1_000_001)
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                        else if (o.Volume >= 500_000)
+                            Console.ForegroundColor = ConsoleColor.Blue;
+
+                        Console.WriteLine(
+                            $"{t:yyyy-MM-dd HH:mm} | Ativo= {underlying} | Spot= {o.SpotPrice} | " +
+                            $"Opção= {o.Symbol,-10} | {o.Category,-4} | Strike= {o.Strike} | Vol= {o.Volume:N0}"
+                        );
+
+                        Console.ResetColor();
+                    }
                 }
             }
             catch (Exception ex)
