@@ -70,8 +70,7 @@ public class Worker : BackgroundService
                             Console.ForegroundColor = ConsoleColor.Blue;
 
                         Console.WriteLine(
-                            $"{t:yyyy-MM-dd HH:mm} | Ativo= {underlying} | Spot= {o.SpotPrice} | " +
-                            $"Opção= {o.Symbol,-10} | {o.Category,-4} | Strike= {o.Strike} | Vol= {o.Volume:N0}"
+                            $"{t:yyyy-MM-dd HH:mm}| Spot= {o.SpotPrice}| Opção= {o.Symbol,-10}| {o.Category,-4}| Strike= {o.Strike}| Vol= {o.Volume:N0}| Vol. Fin. = {o.FinancialVolumeFormatted}| Baixa= {o.Low}| Alta= {o.High}| Variacao = {o.VariationFormatted}"
                         );
 
                         Console.ResetColor();
