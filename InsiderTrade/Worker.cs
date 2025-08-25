@@ -37,6 +37,11 @@ public class Worker : BackgroundService
                         .OrderByDescending(o => o.Volume)
                         .ToList();
 
+                    // 👉 Se não tiver nenhum registro que atenda ao critério, pula este ativo.
+                    if (filtered.Count == 0)
+                        continue;
+
+
                     // Vinheta de separação entre ativos
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine(new string('-', 90));
@@ -70,11 +75,15 @@ public class Worker : BackgroundService
                             Console.ForegroundColor = ConsoleColor.Blue;
 
                         Console.WriteLine(
-                            $"{t:yyyy-MM-dd HH:mm}| Spot= {o.SpotPrice}| Opção= {o.Symbol,-10}| {o.Category,-4}| Strike= {o.Strike}| Vol= {o.Volume:N0}| Vol. Fin. = {o.FinancialVolumeFormatted}| Baixa= {o.Low}| Alta= {o.High}| Variacao = {o.VariationFormatted}"
+                            $"{t:yyyy-MM-dd HH:mm}| Spot= {o.SpotPrice}| Opção= {o.Symbol,-10}| {o.Category,-4}| Strike= {o.Strike}| Vol= {o.Volume:N0}| Vol. Fin= {o.FinancialVolumeFormatted}| Baixa= {o.Low}| Alta= {o.High}| Variacao= {o.VariationFormatted}"
                         );
 
                         Console.ResetColor();
+
                     }
+
+                    Console.WriteLine();
+                    Console.WriteLine();
                 }
             }
             catch (Exception ex)
