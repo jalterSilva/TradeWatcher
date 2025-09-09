@@ -33,9 +33,13 @@ public class Worker : BackgroundService
                     var options = await _oplab.GetAllOptionsAsync(underlying, stoppingToken);
 
                     var filtered = options
-                        .Where(o => o.Volume >= minVol)
-                        .OrderByDescending(o => o.Volume)
-                        .ToList();
+                     .Where(o =>
+                         (o.Volume >= minVol) // regra padrão
+                         || (o.DaysToMaturity >= 60 && o.Volume >= 30_000) // regra especial longas
+                     )
+                     .OrderBy(o => (o.DaysToMaturity >= 60 && o.Volume >= 30_000)) // longas vão pro fim
+                     .ThenByDescending(o => o.Volume) // dentro do grupo, ordena por volume
+                     .ToList();
 
                     // 👉 Se não tiver nenhum registro que atenda ao critério, pula este ativo.
                     if (filtered.Count == 0)
@@ -67,15 +71,26 @@ public class Worker : BackgroundService
                         }
 
                         // Define cor de acordo com volume
-                        if (o.Volume >= 2_000_000)
+                        // 🎯 Nova lógica de cor (prioridade para opções longas)
+                        if (o.DaysToMaturity >= 60 && o.Volume >= 30_000)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkGreen;
+                        }
+                        else if (o.Volume >= 2_000_000)
+                        {
                             Console.ForegroundColor = ConsoleColor.Red;
+                        }
                         else if (o.Volume >= 1_000_001)
+                        {
                             Console.ForegroundColor = ConsoleColor.Yellow;
+                        }
                         else if (o.Volume >= 500_000)
+                        {
                             Console.ForegroundColor = ConsoleColor.Blue;
+                        }
 
                         Console.WriteLine(
-                            $"{t:yyyy-MM-dd HH:mm}| Spot= {o.SpotPrice}| Opção= {o.Symbol,-10}| {o.Category,-4}| Strike= {o.Strike}| Vol= {o.Volume:N0}| Vol. Fin= {o.FinancialVolumeFormatted}| Baixa= {o.Low}| Alta= {o.High}| Variacao= {o.VariationFormatted}"
+                            $"Dias Venc.= {o.DaysToMaturity}| Spot= {o.SpotPrice}| Opção= {o.Symbol,-10}| {o.Category,-4}| Strike= {o.Strike}| Vol= {o.Volume:N0}| Vol. Fin= {o.FinancialVolumeFormatted}| Baixa= {o.Low}| Alta= {o.High}| Variacao= {o.VariationFormatted}"
                         );
 
                         Console.ResetColor();

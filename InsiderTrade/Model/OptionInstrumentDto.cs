@@ -15,8 +15,9 @@ public sealed record OptionInstrumentDto(
     [property: JsonPropertyName("time"), JsonConverter(typeof(FlexibleLongConverter))] long? TimeMs,
     [property: JsonPropertyName("variation")] decimal? Variation,
      [property: JsonPropertyName("high")] decimal? High,
-     [property: JsonPropertyName("low")] decimal? Low
-
+     [property: JsonPropertyName("low")] decimal? Low,
+      [property: JsonPropertyName("days_to_maturity")] int? DaysToMaturity
+     
 )
 {
     public DateTimeOffset? TimeBrt =>
