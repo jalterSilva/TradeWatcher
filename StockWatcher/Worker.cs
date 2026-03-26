@@ -29,14 +29,24 @@ public sealed class Worker : BackgroundService
 
             foreach (var alert in alerts)
             {
-                _logger.LogInformation(
-                    "[{AlertLevel}] {Symbol} | {Direction} | Open: {Open:F2} | Last: {LastPrice:F2} | Change: {ChangePercent:F2}%",
+                var originalColor = Console.ForegroundColor;
+
+                Console.ForegroundColor = alert.Direction == "UP"
+                    ? ConsoleColor.Green
+                    : ConsoleColor.Yellow;
+
+                Console.WriteLine(
+                    "[{0}] {1} | {2} | Open: {3:F2} | Last: {4:F2} | Change: {5:F2}%",
                     alert.AlertLevel,
                     alert.Symbol,
                     alert.Direction,
                     alert.Open,
                     alert.LastPrice,
                     alert.ChangePercent);
+
+                Console.WriteLine();
+
+                Console.ForegroundColor = originalColor;
             }
         }
         catch (Exception ex)
